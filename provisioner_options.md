@@ -14,7 +14,8 @@ salt_apt_repo_key| "http://apt.mccartney.ie/KEY"| apt repo key
 chef_bootstrap_url| "https://www.getchef.com/chef/install.sh"| the chef bootstrap installer, used to provide Ruby for the serverspec test runner on the guest OS
 salt_config| "/etc/salt"|
 [salt_copy_filter](#salt_copy_filter) | [] | List of filenames to be excluded when copying states, formula & pillar data down to guest instances.
-salt_minion_config| "/etc/salt/minion"|
+salt_minion_config| "/etc/salt/minion"| The path to the minion config file
+[salt_minion_config_content](#salt_minion_config_content) | {} | a hash of custom values to be added to the minion config file
 salt_file_root| "/srv/salt"|
 salt_pillar_root| "/srv/pillar"|
 salt_state_top| "/srv/salt/top.sls"|
@@ -27,7 +28,6 @@ state_collection | false | treat this directory as a salt state collection and n
 [pillars-from-files](#pillars-from-files) | | a list of key-value pairs for files that should be loaded as pillar data
 [grains](#grains) | | a hash to be re-written as /etc/salt/grains on the guest
 [dependancies](#dependancies) | | a list of hashes specifying dependancies formulas to be copied into the VM. e.g. [{ :path => 'deps/icinga-formula', :name => 'icinga' }]
-
 
 ##Configuring Provisioner Options
 The provisioner can be configured globally or per suite, global settings act as defaults for all suites, you can then customise per suite, for example:
@@ -56,7 +56,7 @@ The provisioner can be configured globally or per suite, global settings act as 
         provisioner:
           salt_version: 0.16.2
           salt_install: apt
-          
+
 	  - name: tcp-output
 	    provisioner:
 	      pillars:
@@ -67,7 +67,7 @@ The provisioner can be configured globally or per suite, global settings act as 
 	        beaver.sls:
 	          beaver:
 	            transport: tcp
-	    
+
 in this example, the default suite will install salt via the bootstrap method, meaning that it will get the latest package available for the platform via the [bootstrap shell script](http://bootstrap.saltstack.org). We then define another suite called `default_0162`, this has the provisioner install salt-0.16.2 via apt-get (this defaults to a mini repo of mine, which you can override, my repo only contains 0.16.2)
 
 ### [formula](id:formula)
@@ -78,11 +78,11 @@ For a project layout like this:
     .kitchen.yml
     beaver/init.sls
     beaver/foo.sls
-    
+
 formula should be set to ```beaver```
 
 
-If you want all files & directories copied down to the host, see the [is_file_root](#is_file_root) option. 
+If you want all files & directories copied down to the host, see the [is_file_root](#is_file_root) option.
 ### [is_file_root](id:is_file_root)
 Setting the ```is_file_root``` flag allows you to work with a directory tree that more closely resembles a built file_root on a salt-master, where you have may have multiple directories of states or formula.  The project is recursively copied down to guest instance, excluding any hidden files or directories (i.e. .git is not copied down, this is the standard behaviour of ruby's FileUtil.cp_r method)
 
@@ -96,13 +96,13 @@ Consider a directory that looks like this:
     mysql/server.sls
     php/init.sls
     ...
-    
+
 With a .kitchen.yml like this you can now test the completed collection:
 
     ---
     driver:
       name: vagrant
-      
+
     provisioner:
       name: salt_solo
       is_file_root: true
@@ -111,17 +111,17 @@ With a .kitchen.yml like this you can now test the completed collection:
           '*':
             - apache
             - mysql.client
-            
+
     platforms:
       - name: ubuntu-12.04
 
     suites:
       - name: default
-      
+
 In this example, the apache state could use functionality from the php state etc.  You're not just restricted to a single formula.
 
 ### [salt_install](id:salt_install)
-### [salt_bootstrap_options](id:salt_bootstrap_options) 
+### [salt_bootstrap_options](id:salt_bootstrap_options)
 Options to pass to the salt bootstrap installer.  For example, you could choose to install salt from the develop branch like this:
 
     suites:
@@ -129,7 +129,7 @@ Options to pass to the salt bootstrap installer.  For example, you could choose 
         provisioner:
           salt_bootstrap_options: -M -N git develop
 
-Details on the various options available at the [salt-bootstrap](https://github.com/saltstack/salt-bootstrap/blob/develop/bootstrap-salt.sh#L180) documentation. 
+Details on the various options available at the [salt-bootstrap](https://github.com/saltstack/salt-bootstrap/blob/develop/bootstrap-salt.sh#L180) documentation.
 
 ### [salt_copy_filter](id:salt_copy_filter)
 When kitchen copies states, formula & pillars down to the guests it creates to execute the states & run tests against, you can filter out paths that you don't want copied down.  The copy is conducted by ruby's FileUtils.cp method, so all hidden directories are skipped (e.g. ```.git```, ```.kitchen``` etc).
@@ -150,7 +150,7 @@ You can supply a list of paths or files to skip by setting an array in the provi
 ### [salt_version](id:salt_version)
 Version of salt to install, via the git bootstrap method, unless ```salt_install``` is set to ```apt```, in which case the version number is used to generate the package name requested via apt
 
-### [salt_apt_repo](id:salt_apt_repo) 
+### [salt_apt_repo](id:salt_apt_repo)
 ### [salt_apt_repo_key](id:salt_apt_repo_key)
 ### [chef_bootstrap_url](id:chef_bootstrap_url)
 ### [salt_config](id:salt_config)
@@ -170,24 +170,24 @@ The states to be applied, this is rendered into top.sls in the guest, you can de
             '*':
               - beaver
               - beaver.ppa
-              
+
       - name: server
         provisioner:
         state_top:
           base:
             '*':
               - beaver.server
-              - beaver.ppa              
+              - beaver.ppa
 
 ### [state_top_from_file](id:state_top_from_file)
-Instead of rendering ```top.sls``` on the guest from the definition in .kitchen.yml, use top.sls found in the repo. 
+Instead of rendering ```top.sls``` on the guest from the definition in .kitchen.yml, use top.sls found in the repo.
 
     suites:
       - name: use-top-from-disk
         provisioner:
           state_top_from_file: true
-          
-          
+
+
 ### [state_collection](id:state_collection)
 Setting the ```state_collection``` flag to true makes kitchen-salt assume that the state files are at the same level as the ```.kitchen.yml```, unlike a formula, where the states are in a directory underneath the directory containing ```.kitchen.yml```.  When using ```state_collection:true```, you must also set the [collection_name](#collection_name).
 
@@ -215,10 +215,10 @@ When dealing with a collection of states, it's necessary to set the primary coll
 
     platforms:
       - name: ubuntu-12.04
-    
+
     suites:
       - name: default
-         
+
 In order for salt-call to be able to find the logrotate state and apply init.sls, the path to init.sls must be logrotate/init.sls, relative to a ```file_roots``` entry.
 
 ### [pillars](id:pillars)
@@ -248,8 +248,8 @@ Consider the following suite definition:
               base:
                 '*':
                   - beaver
-                  
-                  
+
+
 And the contents of pillar.example is a normal pillar file:
 
 	$ cat pillar.example
@@ -278,3 +278,14 @@ For example, the following suite will define grains on the guest:
             cabinet: 13
             cab_u: 14-15
 
+### [salt_minion_config_content](id:salt_minion_config_content)
+(since v0.0.19)
+
+This option allows you to set custom values in your minion config file, they are written to the file specified in ```salt_minion_config``
+```YAML
+    - name: set-s3-test
+      provisioner:
+        salt_minion_config_content:
+          s3.keyid: GKTADJGHEIQSXMKKRBJ08H
+          s3.key: askdjghsdfjkghWupUjasdflkdfklgjsdfjajkghs
+```

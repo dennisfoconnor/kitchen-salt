@@ -59,6 +59,7 @@ module Kitchen
       default_config :dependencies, []
       default_config :vendor_path, ""
       default_config :omnibus_cachier, false
+      default_config :salt_minion_config_content, {}
 
       # salt-call version that supports the undocumented --retcode-passthrough command
       RETCODE_VERSION = '0.17.5'
@@ -232,24 +233,23 @@ module Kitchen
 
       def prepare_minion
         info("Preparing salt-minion")
-
-        minion_config_content = <<-MINION_CONFIG.gsub(/^ {10}/, '')
-          state_top: top.sls
-
-          file_client: local
-
-          file_roots:
-           base:
-             - #{File.join(config[:root_path], config[:salt_file_root])}
-
-          pillar_roots:
-           base:
-             - #{File.join(config[:root_path], config[:salt_pillar_root])}
-        MINION_CONFIG
+        minion_config = {
+          state_top: 'top.sls',
+          file_client: 'local',
+          file_roots: {
+            base: [ File.join(config[:root_path], config[:salt_file_root]) ]
+          }
+          pillar_roots {
+            base: [ File.join(config[:root_path], config[:salt_pillar_root]) ]
+          }
+        }
+        minion_config.merge!(unsymbolize(config[:salt_minion_config_content]))
+        minion_config_content = safe_yaml(minion_config)
 
         # create the temporary path for the salt-minion config file
         debug("sandbox is #{sandbox_path}")
-        sandbox_minion_config_path = File.join(sandbox_path, config[:salt_minion_config])
+        sandbox_minion_config_path = File.join(sandbox_path,
+          config[:salt_minion_config])
 
         # create the directory & drop the file in
         FileUtils.mkdir_p(File.dirname(sandbox_minion_config_path))
@@ -263,6 +263,10 @@ module Kitchen
         return obj.inject({}){|memo,(k,v)| memo[k.to_s] =  unsymbolize(v); memo} if obj.is_a? Hash
         return obj.inject([]){|memo,v| memo << unsymbolize(v); memo} if obj.is_a? Array
         return obj
+      end
+      def safe_yaml(str)
+        # .to_yaml will produce ! '*' for a key, Salt doesn't like this either.
+        str.to_yaml.gsub(/(!\s'\*')/, "'*'")
       end
 
       def prepare_state_top
