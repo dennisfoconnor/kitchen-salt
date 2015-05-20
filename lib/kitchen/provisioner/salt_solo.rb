@@ -238,8 +238,8 @@ module Kitchen
           file_client: 'local',
           file_roots: {
             base: [ File.join(config[:root_path], config[:salt_file_root]) ]
-          }
-          pillar_roots {
+          },
+          pillar_roots: {
             base: [ File.join(config[:root_path], config[:salt_pillar_root]) ]
           }
         }
@@ -264,9 +264,9 @@ module Kitchen
         return obj.inject([]){|memo,v| memo << unsymbolize(v); memo} if obj.is_a? Array
         return obj
       end
-      def safe_yaml(str)
+      def safe_yaml(obj)
         # .to_yaml will produce ! '*' for a key, Salt doesn't like this either.
-        str.to_yaml.gsub(/(!\s'\*')/, "'*'")
+        unsymbolize(obj).to_yaml.gsub(/(!\s'\*')/, "'*'")
       end
 
       def prepare_state_top
